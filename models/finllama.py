@@ -1,5 +1,7 @@
+from utils.ollama_client import OllamaClient 
+
 class FinLlamaAnalyzer:
-    def __init__(self, model="finllama:13b"):
+    def __init__(self, model="finllama:7b"):
         self.client = OllamaClient(model)
         self.news_template = """[INST]
         Analyze crypto market sentiment from recent news (max 20 words).

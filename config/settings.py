@@ -5,8 +5,8 @@ class Config:
     
     # Models
     DEFAULT_MODELS = {
-        'forecaster': 'chronos:13b',
-        'sentiment': 'finllama:13b'
+        'forecaster': 'chronos:7b',
+        'sentiment': 'finllama:7b'
     }
     
     # Trading

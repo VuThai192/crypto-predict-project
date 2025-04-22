@@ -2,11 +2,11 @@ import json
 from datetime import datetime
 from config.settings import Config
 from utils.data_loader import DataProcessor
-from models.chronos import ChronosForecaster
-from models.finllama import FinLlamaAnalyzer
+from models.mistral_forecaster import MistralForecaster
+from models.finance_analyst import FinancialAnalyst
 from models.ensemble import PredictionEnsembler
 from utils.plotter import ForecastVisualizer
-from utils.binance_loader import BinanceDataCollector
+from utils.binance_downloader import BinanceDataCollector
 
 def main(args):
     # Khởi tạo data collector
@@ -21,34 +21,51 @@ def main(args):
         collector.save_data(raw_data)
         
     # Xử lý dữ liệu
-    processor = DataProcessor()
-    df = processor.get_latest_data()
+  
     
     # Initialize components
-    processor = DataProcessor()
-    forecaster = ChronosForecaster()
-    analyzer = FinLlamaAnalyzer()
+    processor = DataProcessor('ETHUSDT')
+    forecaster = MistralForecaster()
+    analyst = FinancialAnalyst()
     ensembler = PredictionEnsembler()
     visualizer = ForecastVisualizer()
     
     # Load and process data
-    df = processor.load_data(f"{Config.DATA_PATH}/eth.csv")
-    processed_df = processor.add_features(df)
+    df = processor.get_latest_data()
     
     # Generate predictions
-    chronos_pred = forecaster.predict(processed_df)
-    sentiment = analyzer.analyze_news("Latest crypto news...")
+    # chronos_pred = forecaster.predict(df)
+    processed_data = processor.load_and_preprocess()
+    predictions = forecaster.predict(processed_data)  # Đã có format_input
     
-    # Combine predictions
+    sentiment = analyst.analyze(news_text="Tin tức mới nhất về ETF Bitcoin...")
+    
+    # Kết hợp sentiment vào dự báo
+    # adjusted_pred = predictions * (1 + sentiment.get('sentiment_score', 0) * 0.15)
+    
+    # Sửa phần kết hợp dự báo
+    if predictions and isinstance(predictions, list):
+        sentiment_score = sentiment.get("sentiment_score", 0)
+        adjusted_pred = [p * (1 + sentiment_score * 0.15) for p in predictions]
+    else:
+        print("Không có dự báo hợp lệ")
+        adjusted_pred = []
+    print(f"processed_data: {processed_data}")
+    
     final_pred = ensembler.combine(
-        chronos_pred,
-        sentiment['sentiment_score'],
-        {'rsi': processed_df['momentum_rsi'][-1]}
+        adjusted_pred,
+        sentiment.get('sentiment_score', 0),
+        {'rsi': processed_data['rsi'].iloc[-1].item()}  # Thêm .item()
     )
     
     # Generate plot
-    fig = visualizer.create_plot(df, final_pred)
-    fig.write_html("./forecast.html")
+    fig = visualizer.create_plot(
+        history_df=processed_data,
+        predictions=final_pred,
+        future_steps=48,
+        interval_minutes=30
+    )
+    fig.write_html("data/forecasts/forecast.html")
     
 if __name__ == "__main__":
     import argparse
